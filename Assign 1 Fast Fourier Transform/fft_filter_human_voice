@@ -1,0 +1,1879 @@
+#import library 
+
+import numpy as np 
+
+import matplotlib.pyplot as plt 
+
+import scipy as scipy 
+
+import scipy.io.wavfile as wavfile 
+
+from statsmodels.stats.weightstats import DescrStatsW 
+
+ 
+
+class wavsig: 
+
+    def __init__(self, name,data,fs,adress): 
+
+        self.name = str(name) 
+
+        self.data = data 
+
+        self.fs = float(fs) 
+
+        self.adress=adress 
+
+             
+
+        self.size = len(self.data) 
+
+#frequency sieries 
+
+        self.fk = np.linspace(0.0,float(fs),self.size) 
+
+     
+
+        self.fkk = float(self.fs)/float(self.size) 
+
+        self.tk = np.linspace(0.0,float(self.size)/self.fs,self.size) 
+
+         
+
+        self.fft = [0]*self.size 
+
+        self.ff = 0.0 
+
+ 
+
+    def hello(self): 
+
+        return self.name 
+
+ 
+
+     
+
+    def ft(self): 
+
+ 
+
+        self.fft = np.fft.fft(self.data) 
+
+        print("fast fourier transform of ",self.name,"has been done") 
+
+        print("Plot of",self.name,"Signal in Frequency Domain") 
+
+        self.plotf(self.fft) 
+
+        plt.show() 
+
+        #f step 
+
+        fft= np.abs(self.fft[:len(self.fft)//2]) 
+
+        self.ff = np.argmax(fft)*self.fkk 
+
+        print("The peak of",self.name,"Signal lies at",self.ff,"HZ in frequency domain") 
+
+     
+
+        return 
+
+     
+
+#plot in time 
+
+    def plott(self,data): 
+
+        plt.figure("plt in t") 
+
+        plt.plot(self.tk,data) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("time/s") 
+
+         
+
+        return 
+
+ 
+
+    def plottlog(self,data): 
+
+        datalog = np.log10(np.abs(data)) 
+
+        plt.figure("plt log in t") 
+
+        plt.plot(self.tk,datalog) 
+
+        plt.ylabel("log10(amplitude)") 
+
+        plt.xlabel("time/s") 
+
+ 
+
+        return 
+
+ 
+
+    def plotf(self,data): 
+
+        pltf = np.abs(data[:len(data)//2]) 
+
+        fk = self.fk[:len(self.fk)//2] 
+
+        #feed frequency with amplitude and plot 
+
+        plt.figure("plt in f") 
+
+        plt.plot(fk,pltf) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("frequency/HZ") 
+
+ 
+
+        return 
+
+    def plotflog(self,data): 
+
+        pltf = np.abs(data[:len(data)//2]) 
+
+        pltflog = np.log10(pltf) 
+
+        fk = self.fk[:len(self.fk)//2] 
+
+        #feed frequency with amplitude and plot 
+
+        plt.figure("plt log in f") 
+
+        plt.plot(fk,pltflog) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("frequency/HZ") 
+
+ 
+
+        return 
+
+ 
+
+class wavandnoise(wavsig): 
+
+    def __init__(self, name, data, fs,adress, nx): 
+
+        #nx is a list ofn noise example 
+
+        wavsig.__init__(self,name,data,fs,adress) 
+
+    #wavsig.__init__(self,name,data,fs) 
+
+        self.nx = nx 
+
+         
+
+        self.ns = self.nx 
+
+        self.nsf = [0]*self.size 
+
+        self.nsff = 0         
+
+         
+
+        self.datanons = self.data 
+
+        self.nonsf = np.fft.fft(self.datanons) 
+
+        self.nonsff = 0 
+
+         
+
+        self.edttrain = 0 
+
+        self.abstrain = 0 
+
+        self.nsabs=0 
+
+ 
+
+ 
+
+    def nstrain1edt(self): 
+
+ 
+
+        nsedt = np.array(self.ns, dtype='int64')**2 
+
+        nsedtmean = np.mean(nsedt) 
+
+        nsedtstd = np.std(nsedt) 
+
+        threshold = nsedtmean+nsedtstd*2 
+
+        self.ns = [0]*self.size 
+
+        datasquare=np.array(self.data, dtype='int64')**2 
+
+        for i in range(0,self.size): 
+
+            if datasquare[i]<threshold: 
+
+                self.ns[i] = self.data[i] 
+
+#                print(i,"th data is noise") 
+
+            else: 
+
+                self.ns[i] = 0 
+
+#            print(i,"th data is signal") 
+
+        print("Plot of Noise of",self.name,"in Time Domain") 
+
+        self.plott(self.ns) 
+
+        plt.show() 
+
+        print("noise is trained by sample noise considering energy density",self.edttrain,"time") 
+
+         
+
+         
+
+         
+
+        nsedt = np.array(self.ns, dtype='int64')**2 
+
+        nsedtmean = np.mean(nsedt) 
+
+        nsedtstd = np.std(nsedt) 
+
+        threshold = np.sqrt(nsedtmean+nsedtstd*2) 
+
+        self.nsabs=threshold   
+
+        self.edttrain = self.edttrain+1 
+
+       
+
+        return     
+
+     
+
+    def nstrain2abs(self): 
+
+ 
+
+        nsabs = np.abs(self.ns) 
+
+        nsabsmean = np.mean(nsabs) 
+
+        nsabsstd = np.std(nsabs) 
+
+        threshold = nsabsmean+nsabsstd*2 
+
+ 
+
+ 
+
+        self.ns = [0]*self.size 
+
+        for i in range(0,self.size): 
+
+            if (np.abs(self.data[i])<=threshold): 
+
+                self.ns[i] = self.data[i] 
+
+#                print(i,"th data is noise") 
+
+            else: 
+
+                self.ns[i] = 0 
+
+#                print(i,"th data is signal") 
+
+ 
+
+         
+
+        print("Plot of Noise of",self.name,"in Time Domain") 
+
+        self.plott(self.ns) 
+
+        print("noise is trained by sample noise considering abs",self.abstrain,"time") 
+
+#        print self.hello(), ",ns abs train has been done" 
+
+ 
+
+        nsabs = np.abs(self.ns) 
+
+        nsabsmean = np.mean(nsabs) 
+
+        nsabsstd = np.std(nsabs) 
+
+        threshold = nsabsmean+nsabsstd*2 
+
+         
+
+        self.nsabs=threshold 
+
+        self.abstrain = self.abstrain + 1 
+
+        return 
+
+ 
+
+    def trim(self): 
+
+#gives back datanons with no noise in the front 
+
+#        print "removing noise in time domain" 
+
+        self.datanons.setflags(write=1) 
+
+        nsabs=self.abs 
+
+        dtns=[] 
+
+        vstart= False 
+
+        for i in range(0,self.size): 
+
+            if not vstart and np.abs(self.data[i])>=nsabs: 
+
+                dtns.append(self.datanons[i]) 
+
+                vstartt=True 
+
+            elif vstart==True: 
+
+                dtns.append(self.datanons[i]) 
+
+#                print(i,"th data is noise") 
+
+        self.datanons=dtns 
+
+#                print(i,"th data is signal") 
+
+ 
+
+        print("noise of",self.name,"has been reduced")  
+
+        return 
+
+#fft of noise 
+
+    def fftns(self): 
+
+        self.nsf = np.fft.fft(self.ns) 
+
+        #fs sample f 
+
+         
+
+        filename=self.adress+'Plot_of_Noise_of'+self.name+'in_Frequency_Domain.svg' 
+
+        print("Plot of Noise of",self.name,"in Frequency Domain") 
+
+        self.plotf(self.nsf) 
+
+        plt.savefig(filename,format='svg') 
+
+        plt.show() 
+
+         
+
+        #left half of noise list in f domain 
+
+        nsf = np.abs(self.nsf[:len(self.nsf)//2]) 
+
+        self.nsff = np.argmax(nsf)*self.fkk 
+
+        print("The peak of",self.name,"noise lies at",self.nsff,"HZ in frequency domain") 
+
+        return 
+
+#fft of no noise data  
+
+    def fftnons(self): 
+
+        self.nonsf = np.fft.fft(self.datanons) 
+
+ 
+
+        nonsf = np.abs(self.nonsf[:len(self.nonsf)//2]) 
+
+        self.nonsff = np.argmax(nonsf)*self.fkk 
+
+        print("The peak of",self.name,"signal lies at",self.nonsff,"HZ in frequency domain")         
+
+      
+
+        return 
+
+ 
+
+    def famp(self,minf,maxf,times): 
+
+        self.nonsf.setflags(write=True) 
+
+        minfi=int(float(minf)/self.fkk) 
+
+        maxfi=int(float(maxf)/self.fkk) 
+
+        for i in range(0,self.size): 
+
+            if (minfi<i<maxfi) or ((self.size-maxfi)<i<(self.size-minfi)): 
+
+                self.nonsf[i] = self.nonsf[i]*times 
+
+ 
+
+        return 
+
+#ifft of no noise data in frequency domain 
+
+    def ifftnons(self): 
+
+        self.datanons = np.abs(np.fft.ifft(self.nonsf)) * np.real(np.sign(np.fft.ifft(self.nonsf))) 
+
+        #self.datanons = np.array(np.fft.ifft(self.nonsf), dtype='float') 
+
+        filename=self.adress+'Plot_Processed_'+self.name+'_in_Time_Domain.svg' 
+
+        print("Plot of Original and Processed Data in Time Domian") 
+
+        self.plott(self.datanons) 
+
+        self.plott(self.data) 
+
+        plt.savefig(filename,format='svg') 
+
+        plt.show() 
+
+        filename=self.adress+'Processed_'+self.name+'_signal.wav' 
+
+        wavfile.write(filename,int(self.fs),self.datanons) 
+
+        return 
+
+ 
+
+#get relative path 
+
+foldername=os.path.dirname(__file__) 
+
+#heartbeat 
+
+fs,data=wavfile.read(foldername+'heart_beat.wav') 
+
+fs,nx=wavfile.read(foldername+'nx.wav') 
+
+data=data[:,0] 
+
+nx=nx[:,0] 
+
+ 
+
+ 
+
+#gather and analyse the noise with the noise example 
+
+hbt = wavandnoise("heart_beat",data,fs,foldername,nx) 
+
+hbt.nstrain1edt() 
+
+ 
+
+#plot in time 
+
+filename=hbt.adress+'Plot_'+hbt.name+'_in_Time_Domain.svg' 
+
+print("Plot of",hbt.name,"Signal in Time Domain") 
+
+hbt.plott(hbt.data) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+filename=hbt.adress+'Log_Plot_'+hbt.name+'_in_Time_Domain.svg' 
+
+print("Log Plot of",hbt.name,"Signal in Time Domain") 
+
+hbt.plottlog(hbt.data) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+ 
+
+#fft and frequency analysis of noise 
+
+hbt.fftns() 
+
+#fft and frequency analysis of signal 
+
+hbt.ft() 
+
+#plot signal in frequency 
+
+filename=hbt.adress+'Plot_'+hbt.name+'_in_Frequency_Domain.svg' 
+
+print("Plot of",hbt.name,"Signal in Frequency Domain") 
+
+hbt.plotf(hbt.fft) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+filename=hbt.adress+'Log_Plot_'+hbt.name+'_in_Frequency_Domain.svg' 
+
+print("Log Plot of",hbt.name,"Signal in Frequency Domain") 
+
+hbt.plotf(hbt.fft) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+#shrink and amplyfy noise and signal in frequency 
+
+hbt.famp(hbt.nsff-np.sqrt(hbt.nsff),hbt.nsff+np.sqrt(hbt.nsff),0.8) 
+
+hbt.famp(hbt.nonsff-np.sqrt(hbt.nonsff),hbt.nonsff+np.sqrt(hbt.nonsff),1.2) 
+
+print("Plot of processed Signal in Frequency Doamin") 
+
+ 
+
+filename=hbt.adress+'Plot_Processed_'+hbt.name+'_in_Frequency_Domain.svg' 
+
+hbt.plotf(hbt.nonsf) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+#iff and save 
+
+hbt.ifftnons() 
+
+ 
+
+ 
+
+ 
+
+ 
+
+#korotkoff_sound.wav 
+
+fs,data=wavfile.read(foldername+'korotkoff_sound.wav') 
+
+fs,nx=wavfile.read(foldername+'nx.wav') 
+
+data=data[:,0] 
+
+nx=nx[:,0] 
+
+#obt = wavsig("one beat",data,fs) 
+
+#obt.hello() 
+
+#obt.ft() 
+
+#obt.plotf(obt.fft) 
+
+ 
+
+#korotkoff_sound 
+
+htk = wavandnoise("korotkoff_sound",data,fs,foldername,nx) 
+
+htk.nstrain1edt() 
+
+#plot in time 
+
+filename=htk.adress+'Plot_'+htk.name+'_in_Time_Domain.svg' 
+
+print("Plot of",htk.name,"Signal in Time Domain") 
+
+htk.plott(htk.data) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+filename=htk.adress+'Log_Plot_'+htk.name+'_in_Time_Domain.svg' 
+
+print("Log Plot of",htk.name,"Signal in Time Domain") 
+
+htk.plottlog(htk.data) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+#fft of the noise 
+
+htk.fftns() 
+
+#fft of the signal,plot 
+
+htk.ft() 
+
+filename=htk.adress+'Plot_'+htk.name+'_in_Frequency_Domain.svg' 
+
+print("Plot of",htk.name,"Signal in Frequency Domain") 
+
+htk.plotf(htk.fft) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+filename=htk.adress+'Log_Plot_'+htk.name+'_in_Frequency_Domain.svg' 
+
+print("Log Plot of",htk.name,"Signal in Frequency Domain") 
+
+htk.plotflog(htk.fft) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+#shrink and amplify noise and signal frequency 
+
+#htk.famp(htk.nsff-np.sqrt(htk.nsff),htk.nsff+np.sqrt(htk.nsff),0.8) 
+
+htk.famp(htk.nonsff-np.sqrt(htk.nonsff),htk.nonsff+np.sqrt(htk.nonsff),1.2) 
+
+print("Plot of processed Signal in Frequency Doamin") 
+
+filename=htk.adress+'Plot_Processed_'+htk.name+'_in_Frequency_Domain.svg' 
+
+htk.plotf(htk.nonsf) 
+
+plt.savefig(filename,format='svg') 
+
+plt.show() 
+
+ 
+
+#iff and save 
+
+htk.ifftnons() 
+
+Appendix 2 real time word recognition 
+
+# -*- coding: utf-8 -*- 
+
+""" 
+
+Created on Thu Oct 18 16:44:48 2018 
+
+ 
+
+@author: gbarry_2 
+
+""" 
+
+ 
+
+ 
+
+ 
+
+import numpy as np 
+
+import matplotlib.pyplot as plt 
+
+import scipy as scipy 
+
+import scipy.io.wavfile as wavfile 
+
+from statsmodels.stats.weightstats import DescrStatsW 
+
+import os as os 
+
+class wavsig: 
+
+    def __init__(self, name,data,fs,adress): 
+
+        self.name = str(name) 
+
+        self.data = data 
+
+        self.fs = float(fs) 
+
+        self.adress=adress 
+
+             
+
+        self.size = len(self.data) 
+
+#frequency sieries 
+
+        self.fk = np.linspace(0.0,float(fs),self.size) 
+
+     
+
+        self.fkk = float(self.fs)/float(self.size) 
+
+        self.tk = np.linspace(0.0,float(self.size)/self.fs,self.size) 
+
+         
+
+        self.fft = [0]*self.size 
+
+        self.ff = 0.0 
+
+ 
+
+    def hello(self): 
+
+        return self.name 
+
+ 
+
+     
+
+    def ft(self): 
+
+    #self.fft.extend(np.abs(np.fft.fft(self.data))) 
+
+        self.fft = np.fft.fft(self.data) 
+
+ 
+
+        fft= np.abs(self.fft[:len(self.fft)//2]) 
+
+        self.ff = np.argmax(fft)*self.fkk 
+
+ 
+
+     
+
+        return 
+
+     
+
+#plot in time 
+
+    def plott(self,data): 
+
+        plt.figure("plt in t") 
+
+        plt.plot(self.tk,data) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("time/s") 
+
+         
+
+        return 
+
+ 
+
+    def plottlog(self,data): 
+
+        datalog = np.log10(np.abs(data)) 
+
+        plt.figure("plt log in t") 
+
+        plt.plot(self.tk,datalog) 
+
+        plt.ylabel("log10(amplitude)") 
+
+        plt.xlabel("time/s") 
+
+ 
+
+        return 
+
+ 
+
+    def plotf(self,data): 
+
+        pltf = np.abs(data[:len(data)//2]) 
+
+        fk = self.fk[:len(self.fk)//2] 
+
+        #feed frequency with amplitude and plot 
+
+        plt.figure("plt in f") 
+
+        plt.plot(fk,pltf) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("frequency/HZ") 
+
+ 
+
+        return 
+
+    def plotflog(self,data): 
+
+        pltf = np.abs(data[:len(data)//2]) 
+
+        pltflog = np.log10(pltf) 
+
+        fk = self.fk[:len(self.fk)//2] 
+
+        #feed frequency with amplitude and plot 
+
+        plt.figure("plt log in f") 
+
+        plt.plot(fk,pltflog) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("frequency/HZ") 
+
+ 
+
+        return 
+
+ 
+
+class wavandnoise(wavsig): 
+
+    def __init__(self, name, data, fs,adress, nx): 
+
+ 
+
+        wavsig.__init__(self,name,data,fs,adress) 
+
+ 
+
+        self.nx = nx 
+
+         
+
+        self.ns = self.nx 
+
+        self.nsf = [0]*self.size 
+
+        self.nsff = 0         
+
+         
+
+        self.datanons = self.data 
+
+        self.nonsf = np.fft.fft(self.datanons) 
+
+        self.nonsff = 0 
+
+         
+
+        self.edttrain = 0 
+
+        self.abstrain = 0 
+
+        self.nsabs=0 
+
+ 
+
+#recognize noise by the energy density of noise sample 
+
+    def nstrain1edt(self): 
+
+ 
+
+        nsedt = np.array(self.ns, dtype='int64')**2 
+
+        nsedtmean = np.mean(nsedt) 
+
+        nsedtstd = np.std(nsedt) 
+
+        threshold = nsedtmean+nsedtstd*2 
+
+        self.ns = [0]*self.size 
+
+        datasquare=np.array(self.data, dtype='int64')**2 
+
+        for i in range(0,self.size): 
+
+            if datasquare[i]<threshold: 
+
+                self.ns[i] = self.data[i] 
+
+ 
+
+            else: 
+
+                self.ns[i] = 0 
+
+ 
+
+      
+
+        nsedt = np.array(self.ns, dtype='int64')**2 
+
+        nsedtmean = np.mean(nsedt) 
+
+        nsedtstd = np.std(nsedt) 
+
+        threshold = np.sqrt(nsedtmean+nsedtstd*2) 
+
+        self.nsabs=threshold   
+
+        self.edttrain = self.edttrain+1 
+
+       
+
+        return     
+
+#reognize the noise by the abs of the noise sample 
+
+    def nstrain2abs(self): 
+
+ 
+
+        nsabs = np.abs(self.ns) 
+
+        nsabsmean = np.mean(nsabs) 
+
+        nsabsstd = np.std(nsabs) 
+
+        threshold = nsabsmean+nsabsstd*2 
+
+ 
+
+ 
+
+        self.ns = [0]*self.size 
+
+        for i in range(0,self.size): 
+
+            if (np.abs(self.data[i])<=threshold): 
+
+                self.ns[i] = self.data[i] 
+
+ 
+
+            else: 
+
+                self.ns[i] = 0 
+
+ 
+
+ 
+
+         
+
+ 
+
+ 
+
+        nsabs = np.abs(self.ns) 
+
+        nsabsmean = np.mean(nsabs) 
+
+        nsabsstd = np.std(nsabs) 
+
+        threshold = nsabsmean+nsabsstd*2 
+
+         
+
+        self.nsabs=threshold 
+
+        self.abstrain = self.abstrain + 1 
+
+        return 
+
+    def trim(self): 
+
+ 
+
+        self.datanons.setflags(write=1) 
+
+        nsabs=self.nsabs 
+
+        dtns=[] 
+
+        vstart= False 
+
+        for i in range(0,self.size): 
+
+            if not vstart and np.abs(self.data[i])>=nsabs: 
+
+                dtns.append(self.datanons[i]) 
+
+                vstartt=True 
+
+            elif vstart==True: 
+
+                dtns.append(self.datanons[i]) 
+
+ 
+
+        self.datanons=dtns 
+
+ 
+
+        return 
+
+    def fftns(self): 
+
+        self.nsf = np.fft.fft(self.ns) 
+
+ 
+
+        nsf = np.abs(self.nsf[:len(self.nsf)//2]) 
+
+        self.nsff = np.argmax(nsf)*self.fkk 
+
+        return 
+
+   
+
+    def fftnons(self): 
+
+        self.nonsf = np.fft.fft(self.datanons) 
+
+   
+
+        nonsf = np.abs(self.nonsf[:len(self.nonsf)//2]) 
+
+        self.nonsff = np.argmax(nonsf)*self.fkk 
+
+#        print("The peak of",self.name,"signal lies at",self.nonsff,"HZ in frequency domain")         
+
+      
+
+        return 
+
+ 
+
+ 
+
+ 
+
+ 
+
+#filter3:in frequency domain,shrink certain percentage of noise(some signal shrink meanwhile) 
+
+    def famp(self,minf,maxf,times): 
+
+        self.nonsf.setflags(write=True) 
+
+        minfi=int(float(minf)/self.fkk) 
+
+        maxfi=int(float(maxf)/self.fkk) 
+
+        for i in range(0,self.size): 
+
+            if (minfi<i<maxfi) or ((self.size-maxfi)<i<(self.size-minfi)): 
+
+                self.nonsf[i] = self.nonsf[i]*times 
+
+ 
+
+        return 
+
+#get a 5 number summary of signal frequency 
+
+    def ifftnons(self): 
+
+        self.datanons = np.abs(np.fft.ifft(self.nonsf)) * np.real(np.sign(np.fft.ifft(self.nonsf))) 
+
+ 
+
+        filename=self.adress+'Processed_'+self.name+'_signal.wav' 
+
+        wavfile.write(filename,int(self.fs),self.datanons) 
+
+        return 
+
+ 
+
+ 
+
+class word(wavandnoise): 
+
+    def __init__(self, name, data, fs, adress, nx, chunktime, noofchunk): 
+
+        # nx is a list ofn noise example 
+
+        wavandnoise.__init__(self, name, data, fs, adress, nx) 
+
+        self.chunktime = float(chunktime) 
+
+        self.noinchunk = int(self.chunktime * self.fs) 
+
+        self.noofchunk = noofchunk 
+
+ 
+
+        self.chunkf = [0.0] * self.noinchunk 
+
+        self.chunkfk = np.linspace(0.0, float(self.fs), self.noinchunk) 
+
+        self.chunktk = np.linspace(0.0, float(self.chunktime), self.noinchunk) 
+
+        self.chunkfkk = float(self.fs) / float(self.noinchunk) 
+
+        self.chunktkk = float(self.chunktime) / float(self.noinchunk) 
+
+ 
+
+        self.nstrain1edt() 
+
+        self.ft() 
+
+        self.fftns() 
+
+        self.fftnons() 
+
+ 
+
+ 
+
+    def normalise(self): 
+
+        maximum = 10000 
+
+        times = float(maximum / np.max(np.abs(self.datanons))) 
+
+        for i in range(len(self.datanons)): 
+
+            self.datanons[i] = int(float(self.datanons[i]) * times) 
+
+#trim the noise in the front 
+
+    def trimword(self): 
+
+        self.trim() 
+
+        size = self.noinchunk * self.noofchunk 
+
+        shape = np.array([0] * size, dtype='int32') 
+
+        if len(shape) > len(self.datanons): 
+
+            shape[0:len(self.datanons)] = self.datanons 
+
+            self.datanons = shape 
+
+ 
+
+    def chunk(self): 
+
+        self.datanons = self.datanons[:self.noinchunk * self.noofchunk] 
+
+        self.datanons = np.reshape((self.datanons), (self.noofchunk, self.noinchunk)) 
+
+ 
+
+    def chunkft(self): 
+
+        a = [] 
+
+        for i in range(0, self.noofchunk): 
+
+            b = np.fft.fft(self.datanons[i]) 
+
+ 
+
+            a.append(b) 
+
+        self.chunkf = a 
+
+         
+
+        chunkfabs=np.abs(self.chunkf) 
+
+         
+
+        maximum=10000000 
+
+        noofchunk=self.noofchunk 
+
+        noinchunk=self.noinchunk 
+
+        for i in range(0,noofchunk): 
+
+            maxi=np.max(chunkfabs[i]) 
+
+            times=float(maximum)/float(maxi) 
+
+            for j in range(0,noinchunk): 
+
+                self.chunkf[i][j]=times*self.chunkf[i][j] 
+
+        return 
+
+ 
+
+    def plotfchunk(self, chunkdata): 
+
+        pltf = np.abs(chunkdata[:len(chunkdata) // 20]) 
+
+        fk = self.chunkfk[:len(self.chunkfk) // 20] 
+
+        # feed frequency with amplitude and plot 
+
+        plt.figure("plt in f") 
+
+        plt.plot(fk, pltf) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("frequency/HZ") 
+
+ 
+
+        return 
+
+ 
+
+    def plottchunk(self, chunkdata): 
+
+        plt.figure("plt in t") 
+
+        plt.plot(self.chunktk, chunkdata) 
+
+        plt.ylabel("amplitude") 
+
+        plt.xlabel("time/s") 
+
+import pyaudio 
+
+import wave 
+
+from array import array 
+
+ 
+
+def recordns(time,name): 
+
+    FORMAT=pyaudio.paInt16 
+
+    CHANNELS=2 
+
+    RATE=44000 
+
+    CHUNK=1024 
+
+    RECORD_SECONDS=time 
+
+    Threshold=100 
+
+    FILE_NAME=os.path.dirname(__file__)+'/'+str(name)+'.wav' 
+
+ 
+
+    audio=pyaudio.PyAudio() #instantiate the pyaudio 
+
+ 
+
+    #recording prerequisites 
+
+    stream=audio.open(format=FORMAT,channels=CHANNELS, 
+
+                      rate=RATE, 
+
+                      input=True, 
+
+                      frames_per_buffer=CHUNK) 
+
+ 
+
+    #starting recording 
+
+    frames=[] 
+
+ 
+
+    for i in range(0,int(RATE/CHUNK*RECORD_SECONDS)): 
+
+        data=stream.read(CHUNK) 
+
+        data_chunk=array('h',data) 
+
+        #vol=max(data_chunk) 
+
+        #if(vol>=Threshold): 
+
+        frames.append(data) 
+
+ 
+
+ 
+
+ 
+
+    #end of recording 
+
+    stream.stop_stream() 
+
+    stream.close() 
+
+    audio.terminate() 
+
+    #writing to file 
+
+    wavfile=wave.open(FILE_NAME,'wb') 
+
+    wavfile.setnchannels(CHANNELS) 
+
+    wavfile.setsampwidth(audio.get_sample_size(FORMAT)) 
+
+    wavfile.setframerate(RATE) 
+
+    wavfile.writeframes(b''.join(frames))#append frames recorded to file 
+
+    wavfile.close() 
+
+    return 
+
+ 
+
+def record(time,name): 
+
+    FORMAT=pyaudio.paInt16 
+
+    CHANNELS=2 
+
+    RATE=44000 
+
+    CHUNK=1024 
+
+    RECORD_SECONDS=time 
+
+    Threshold=100 
+
+    FILE_NAME=os.path.dirname(__file__)+'/'+str(name)+'.wav' 
+
+ 
+
+    audio=pyaudio.PyAudio() #instantiate the pyaudio 
+
+ 
+
+    #recording prerequisites 
+
+    stream=audio.open(format=FORMAT,channels=CHANNELS, 
+
+                      rate=RATE, 
+
+                      input=True, 
+
+                      frames_per_buffer=CHUNK) 
+
+ 
+
+    #starting recording 
+
+    frames=[] 
+
+    i=0 
+
+    vstart=False 
+
+    while 1: 
+
+ 
+
+        data=stream.read(CHUNK) 
+
+        data_chunk=array('h',data) 
+
+        vol=max(data_chunk) 
+
+        if(vol>=Threshold): 
+
+ 
+
+            frames.append(data) 
+
+            vstart=True 
+
+            if i>int(RATE/CHUNK*RECORD_SECONDS): 
+
+                break 
+
+            elif vstart: 
+
+                i=i+1 
+
+ 
+
+ 
+
+ 
+
+ 
+
+    #end of recording 
+
+    stream.stop_stream() 
+
+    stream.close() 
+
+    audio.terminate() 
+
+    #writing to file 
+
+    wavfile=wave.open(FILE_NAME,'wb') 
+
+    wavfile.setnchannels(CHANNELS) 
+
+    wavfile.setsampwidth(audio.get_sample_size(FORMAT)) 
+
+    wavfile.setframerate(RATE) 
+
+    wavfile.writeframes(b''.join(frames))#append frames recorded to file 
+
+    wavfile.close() 
+
+    return 
+
+ 
+
+ 
+
+ 
+
+ 
+
+foldername=os.path.dirname(__file__)+'/' 
+
+print(foldername) 
+
+#read in the template 
+
+fs,datahello1=wavfile.read(foldername+'hello1.wav') 
+
+fs,datahello2=wavfile.read(foldername+'hello2.wav') 
+
+fs,datahello3=wavfile.read(foldername+'hello3.wav') 
+
+fs,nx=wavfile.read(foldername+'nx_word.wav') 
+
+ 
+
+hello1 = word("hello1",datahello1,fs,foldername,nx,0.1,3)     
+
+hello2 = word("hello2",datahello2,fs,foldername,nx,0.1,3)  
+
+hello3 = word("hello3",datahello3,fs,foldername,nx,0.1,3)  
+
+ #remove noise,normalise,trim,chunk,do fft of each chunk 
+
+hello1.famp(hello1.nsff-5,hello1.nsff+5,0.5)  
+
+hello1.datanons=np.abs(np.fft.ifft(hello1.nonsf))*np.real(np.sign(np.fft.ifft(hello1.nonsf))) 
+
+hello1.normalise() 
+
+hello1.trimword() 
+
+hello1.chunk() 
+
+hello1.chunkft() 
+
+ 
+
+hello2.famp(hello2.nsff-5,hello2.nsff+5,0.5)  
+
+hello2.datanons=np.abs(np.fft.ifft(hello2.nonsf))*np.real(np.sign(np.fft.ifft(hello2.nonsf))) 
+
+hello2.normalise() 
+
+hello2.trimword() 
+
+hello2.chunk() 
+
+hello2.chunkft() 
+
+ 
+
+hello3.famp(hello3.nsff-5,hello3.nsff+5,0.5)  
+
+hello3.datanons=np.abs(np.fft.ifft(hello3.nonsf))*np.real(np.sign(np.fft.ifft(hello3.nonsf))) 
+
+hello3.normalise() 
+
+hello3.trimword() 
+
+hello3.chunk() 
+
+hello3.chunkft() 
+
+ 
+
+fs,dataworld1=wavfile.read(foldername+'world1.wav') 
+
+fs,dataworld2=wavfile.read(foldername+'world2.wav') 
+
+fs,dataworld3=wavfile.read(foldername+'world3.wav') 
+
+fs,nx=wavfile.read(foldername+'nx_word.wav') 
+
+ 
+
+world1 = word("world1",dataworld1,fs,foldername,nx,0.1,3)     
+
+world2 = word("world2",dataworld2,fs,foldername,nx,0.1,3)  
+
+world3 = word("world3",dataworld3,fs,foldername,nx,0.1,3)  
+
+world1.famp(world1.nsff-5,world1.nsff+5,0.5)  
+
+world1.datanons=np.abs(np.fft.ifft(world1.nonsf))*np.real(np.sign(np.fft.ifft(world1.nonsf))) 
+
+world1.normalise() 
+
+world1.trimword() 
+
+world1.chunk() 
+
+world1.chunkft() 
+
+ 
+
+world2.famp(world2.nsff-5,world2.nsff+5,0.5)  
+
+world2.datanons=np.abs(np.fft.ifft(world2.nonsf))*np.real(np.sign(np.fft.ifft(world2.nonsf))) 
+
+world2.normalise() 
+
+world2.trimword() 
+
+world2.chunk() 
+
+world2.chunkft() 
+
+ 
+
+world3.famp(world3.nsff-5,world3.nsff+5,0.5)  
+
+world3.datanons=np.abs(np.fft.ifft(world3.nonsf))*np.real(np.sign(np.fft.ifft(world3.nonsf))) 
+
+world3.normalise() 
+
+world3.trimword() 
+
+world3.chunk() 
+
+world3.chunkft() 
+
+ 
+
+ 
+
+     
+
+hellofdata=(np.abs(hello1.chunkf)+np.abs(hello2.chunkf)+np.abs(hello3.chunkf))/3.0 
+
+worldfdata=(np.abs(world1.chunkf)+np.abs(world2.chunkf)+np.abs(world3.chunkf))/3.0 
+
+#obtaining the lowest value of amplitude of the frequency in 3 templates 
+
+hellofdata=np.zeros(np.array(hello1.chunkf).shape) 
+
+for i in range(0,hello1.noofchunk): 
+
+    for j in range(0,hello1.noinchunk): 
+
+        hellofdata[i][j]=min(abs(hello1.chunkf[i][j]),abs(hello2.chunkf[i][j]),abs(hello3.chunkf[i][j])) 
+
+worldfdata=np.zeros(np.array(world1.chunkf).shape) 
+
+for i in range(0,world1.noofchunk): 
+
+    for j in range(0,world1.noinchunk): 
+
+        worldfdata[i][j]=min(abs(world1.chunkf[i][j]),abs(world2.chunkf[i][j]),abs(world3.chunkf[i][j])) 
+
+     
+
+ 
+
+ 
+
+hellofdata=np.zeros(np.array(hello1.chunkf).shape) 
+
+for i in range(0,hello1.noofchunk): 
+
+    for j in range(0,hello1.noinchunk): 
+
+        hellofdata[i][j]=min(abs(hello1.chunkf[i][j]),abs(hello2.chunkf[i][j]),abs(hello3.chunkf[i][j])) 
+
+worldfdata=np.zeros(np.array(world1.chunkf).shape) 
+
+for i in range(0,world1.noofchunk): 
+
+    for j in range(0,world1.noinchunk): 
+
+        worldfdata[i][j]=min(abs(world1.chunkf[i][j]),abs(world2.chunkf[i][j]),abs(world3.chunkf[i][j])) 
+
+     
+
+#only the maximum value in the 100HZ around is defined as peak 
+
+def peakfinder(fmin,fmax,fkk,wordfdata,peakfarea): 
+
+ 
+
+    peakfarea=peakfarea 
+
+    imin=int(float(fmin)/fkk) 
+
+    imax=int(float(fmax)/fkk) 
+
+    wordtime=len(wordfdata) 
+
+     
+
+     
+
+    peakarea=int(peakfarea/fkk) 
+
+    peakfz=[] 
+
+    peakfvz=[] 
+
+    for i in range(0,wordtime): 
+
+        peakf=[] 
+
+        peakfv=[] 
+
+        for j in range(imin,imax): 
+
+            area=wordfdata[i][j-peakarea:j+peakarea] 
+
+            maxinarea=max(area) 
+
+            if wordfdata[i][j] == maxinarea: 
+
+                fpeak=j*fkk 
+
+                fpeakv=wordfdata[i][j] 
+
+                peakf.append(fpeak) 
+
+                peakfv.append(fpeakv) 
+
+        peakfz.append(peakf) 
+
+        peakfvz.append(peakfv) 
+
+ 
+
+    return peakfz,peakfvz 
+
+peakf_hello,peakfv_hello=peakfinder(200,2000,hello1.chunkfkk,hellofdata,100) 
+
+peakf_world,peakfv_world=peakfinder(200,2000,world1.chunkfkk,worldfdata,100) 
+
+#this list gives the index of the peak used as threshold 
+
+helloilist=[[0,1],[0,1,2],[0,1]] 
+
+ 
+
+def recognitionhello(sampledata,peakindex,noofchunk,fkk,farea): 
+
+    n=0 
+
+    m=0 
+
+    for i in range(0,noofchunk): 
+
+ 
+
+        for j in range(0,len(peakindex[i])): 
+
+             
+
+            index=peakindex[i][j] 
+
+            f=peakf_hello[i][index] 
+
+            imin=int(f/fkk-farea/fkk) 
+
+            imax=int(f/fkk+farea/fkk) 
+
+            threshold=0.7*peakfv_hello[i][index] 
+
+          
+
+            m=m+1 
+
+            for k in range(imin,imax): 
+
+                if sampledata[i][k]>=(threshold): 
+
+ 
+
+                    n=n+1 
+
+                    break 
+
+    if n/m>0.6: 
+
+        return 1 
+
+    else: 
+
+        return 0 
+
+#this list gives the index of the peak used as threshold 
+
+worldilist=[[0,1,2,3,4],[0,1,2,3,4],[0,1,2,4]] 
+
+def recognitionworld(sampledata,peakindex,noofchunk,fkk,farea): 
+
+    n=0 
+
+    m=0 
+
+    for i in range(0,noofchunk): 
+
+        #print("in chunk",i+1) 
+
+        for j in range(0,len(peakindex[i])): 
+
+             
+
+            index=peakindex[i][j] 
+
+            f=peakf_hello[i][index] 
+
+            imin=int(f/fkk-farea/fkk) 
+
+            imax=int(f/fkk+farea/fkk) 
+
+            threshold=0.7*peakfv_world[i][index] 
+
+ 
+
+            m=m+1 
+
+            for k in range(imin,imax): 
+
+                if sampledata[i][k]>=(threshold): 
+
+ 
+
+                    n=n+1 
+
+                    break 
+
+ 
+
+    if n/m>0.6: 
+
+        return 1 
+
+    else: 
+
+        return 0 
+
+ 
+
+print('recording noise') 
+
+recordns(1,"sample_nx_word") 
+
+samplerate,nx=wavfile.read(foldername+"sample_nx_word.wav") 
+
+nx=nx[:,0] 
+
+class realtimerec: 
+
+    def process(self): 
+
+        print('please speak hello or world') 
+
+        i=0 
+
+        while 1: 
+
+            index=str(i) 
+
+            print("ready to recognize the word, please speak hello or world") 
+
+            record(5,"wordsample"+index) 
+
+            i=i+1 
+
+            samplerate,sampledata=wavfile.read(os.path.dirname(__file__)+'/'+"wordsample"+index+".wav") 
+
+            sampledata=sampledata[:,0] 
+
+            print("recognizing recorded sample") 
+
+            sample = word("sample",sampledata,samplerate,foldername,nx,0.1,3)  
+
+            sample.famp(sample.nsff-5,sample.nsff+5,0.5)  
+
+            sample.datanons=np.abs(np.fft.ifft(sample.nonsf))*np.real(np.sign(np.fft.ifft(sample.nonsf))) 
+
+            sample.normalise() 
+
+            sample.trimword() 
+
+            sample.chunk() 
+
+            sample.chunkft() 
+
+ 
+
+ 
+
+            fkk=sample.chunkfkk 
+
+            farea=200.0 
+
+            ifworld=recognitionworld(sample.chunkf,worldilist,sample.noofchunk,fkk,farea) 
+
+            ifhello=recognitionhello(sample.chunkf,helloilist,sample.noofchunk,fkk,farea) 
+
+            if ifworld: 
+
+                print("the word could porbably be 'world'") 
+
+            elif ifhello: 
+
+                print("the word could porbably be 'hello'") 
+
+            if (not ifhello) and (not ifworld): 
+
+                print("not recognize word") 
+
+            print("\n") 
+
+ 
+
+a=realtimerec() 
+
+a.process() 
